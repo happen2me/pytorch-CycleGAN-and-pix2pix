@@ -5,9 +5,10 @@ import argparse
 from multiprocessing import Pool
 
 
-def image_write(path_A, path_B, path_AB):
-    im_A = cv2.imread(path_A, 1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
-    im_B = cv2.imread(path_B, 1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
+def image_write(path_A, path_B, path_AB, grayscale=False):
+    read_flag = cv2.IMREAD_GRAYSCALE if grayscale else cv2.IMREAD_COLOR
+    im_A = cv2.imread(path_A, read_flag) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
+    im_B = cv2.imread(path_B, read_flag) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
     im_AB = np.concatenate([im_A, im_B], 1)
     cv2.imwrite(path_AB, im_AB)
 
@@ -19,6 +20,7 @@ parser.add_argument('--fold_AB', dest='fold_AB', help='output directory', type=s
 parser.add_argument('--num_imgs', dest='num_imgs', help='number of images', type=int, default=1000000)
 parser.add_argument('--use_AB', dest='use_AB', help='if true: (0001_A, 0001_B) to (0001_AB)', action='store_true')
 parser.add_argument('--no_multiprocessing', dest='no_multiprocessing', help='If used, chooses single CPU execution instead of parallel execution', action='store_true',default=False)
+parser.add_argument('--grayscale', action='store_true')
 args = parser.parse_args()
 
 for arg in vars(args):
@@ -56,10 +58,11 @@ for sp in splits:
                 name_AB = name_AB.replace('_A.', '.')  # remove _A
             path_AB = os.path.join(img_fold_AB, name_AB)
             if not args.no_multiprocessing:
-                pool.apply_async(image_write, args=(path_A, path_B, path_AB))
+                pool.apply_async(image_write, args=(path_A, path_B, path_AB, args.grayscale))
             else:
-                im_A = cv2.imread(path_A, 1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
-                im_B = cv2.imread(path_B, 1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
+                read_flag = cv2.IMREAD_GRAYSCALE if args.grayscale else cv2.IMREAD_COLOR
+                im_A = cv2.imread(path_A, read_flag) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
+                im_B = cv2.imread(path_B, read_flag) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
                 im_AB = np.concatenate([im_A, im_B], 1)
                 cv2.imwrite(path_AB, im_AB)
 if not args.no_multiprocessing:
