@@ -26,12 +26,16 @@ See options/base_options.py and options/test_options.py for more test options.
 See training and test tips at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/tips.md
 See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/qa.md
 """
+from collections import OrderedDict
 import os
 from options.test_options import TestOptions
 from data import create_dataset
 from models import create_model
+from models.metrics import  mse, psnr, ssim, lpimp
 from util.visualizer import save_images
 from util import html
+import csv
+import numpy as np
 
 try:
     import wandb
@@ -67,6 +71,7 @@ if __name__ == '__main__':
     # For [CycleGAN]: It should not affect CycleGAN as CycleGAN uses instancenorm without dropout.
     if opt.eval:
         model.eval()
+    paths, mses, psnrs, ssims, lpimps = [], [], [], [], []
     for i, data in enumerate(dataset):
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
@@ -76,5 +81,32 @@ if __name__ == '__main__':
         img_path = model.get_image_paths()     # get image paths
         if i % 5 == 0:  # save images to an HTML file
             print('processing (%04d)-th image... %s' % (i, img_path))
-        save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
+        metric = {}
+        metric['mse'] = mse(model.fake_B, model.real_B)
+        metric['psnr'] = psnr(model.fake_B, model.real_B)
+        metric['ssim'] = ssim(model.fake_B, model.real_B)
+        metric['lpimps'] = lpimp(model.fake_B, model.real_B, 'vgg')
+        mses.append(metric['mse'].cpu().item())
+        psnrs.append(metric['psnr'].cpu().item())
+        ssims.append(metric['ssim'])
+        lpimps.append(metric['lpimps'].cpu().item())
+        paths.append(img_path[0])
+        save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb, metric=metric)
     webpage.save()  # save the HTML
+    metrics = {'mse':mses, 'psnr':psnrs, 'ssim':ssims, 'lpimp': lpimps}
+
+    with open(os.path.join(opt.results_dir, opt.name, 'metrics.csv'), 'w+') as f:
+        writer = csv.writer(f)
+
+        metric_avg_types =  [f'{metric} avg' for metric in metrics.keys()]
+        metric_avg_vals = [np.mean(np.array(metric)) for metric in metrics.values()]
+        writer.writerows([metric_avg_types, metric_avg_vals])
+
+        metric_types = list(metrics.keys())
+        val_types = ['path'] + metric_types
+        writer.writerow(val_types)
+
+        for i in range(len(metrics[metric_types[0]])):
+            metric_vals = [ metrics[metric_types[j]][i] for j in range(len(metric_types))]
+            val = [paths[i]] + metric_vals
+            writer.writerow(val)
