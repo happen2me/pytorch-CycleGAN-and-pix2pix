@@ -85,11 +85,15 @@ if __name__ == '__main__':
         metric['mse'] = mse(model.fake_B, model.real_B)
         metric['psnr'] = psnr(model.fake_B, model.real_B)
         metric['ssim'] = ssim(model.fake_B, model.real_B)
-        metric['lpimps'] = lpimp(model.fake_B, model.real_B, 'vgg')
+        try:
+            metric['lpimps'] = lpimp(model.fake_B, model.real_B, 'vgg')
+            lpimps.append(metric['lpimps'].cpu().item())
+        except ValueError:
+            metric['lpimps'] = np.nan
+            lpimps.append(np.nan)
         mses.append(metric['mse'].cpu().item())
         psnrs.append(metric['psnr'].cpu().item())
         ssims.append(metric['ssim'])
-        lpimps.append(metric['lpimps'].cpu().item())
         paths.append(img_path[0])
         save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb, metric=metric)
     webpage.save()  # save the HTML

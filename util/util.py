@@ -53,14 +53,17 @@ def save_image(image_numpy, image_path, aspect_ratio=1.0):
         image_numpy (numpy array) -- input numpy array
         image_path (str)          -- the path of the image
     """
-
     image_pil = Image.fromarray(image_numpy)
-    h, w, _ = image_numpy.shape
+    h, w = image_numpy.shape[0], image_numpy.shape[1]
 
     if aspect_ratio > 1.0:
         image_pil = image_pil.resize((h, int(w * aspect_ratio)), Image.BICUBIC)
     if aspect_ratio < 1.0:
         image_pil = image_pil.resize((int(h / aspect_ratio), w), Image.BICUBIC)
+
+    # Need to convert to RGB to save as PNG or JPEG
+    if len(image_pil.size) == 2:
+        image_pil = image_pil.convert('RGB')
     image_pil.save(image_path)
 
 

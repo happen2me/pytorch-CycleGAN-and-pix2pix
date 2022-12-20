@@ -42,6 +42,12 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
     ims_dict = {}
     for label, im_data in visuals.items():
         im = util.tensor2im(im_data)
+        nc = im.shape[2]
+        # if the channel is greater than 3, then convert it to grayscale
+        # by convert the last dim from onehot to index
+        if nc > 3:
+            im = np.argmax(im, axis=2)
+            im = im.astype(np.float32)
         image_name = '%s_%s.png' % (name, label)
         save_path = os.path.join(image_dir, image_name)
         util.save_image(im, save_path, aspect_ratio=aspect_ratio)
