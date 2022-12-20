@@ -5,7 +5,7 @@ import ntpath
 import time
 from . import util, html
 from subprocess import Popen, PIPE
-
+import torch
 
 try:
     import wandb
@@ -18,7 +18,7 @@ else:
     VisdomExceptionBase = ConnectionError
 
 
-def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_wandb=False):
+def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_wandb=False, metric=''):
     """Save images to the disk.
 
     Parameters:
@@ -33,6 +33,9 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
     image_dir = webpage.get_image_dir()
     short_path = ntpath.basename(image_path[0])
     name = os.path.splitext(short_path)[0]
+    if metric != '':
+        metric_list = [f'{key}:{value:.4f}' for key, value in metric.items()]
+        name = name +  "  Metric:  " + " ".join(metric_list)
 
     webpage.add_header(name)
     ims, txts, links = [], [], []
@@ -119,6 +122,8 @@ class Visualizer():
             epoch (int) - - the current epoch
             save_result (bool) - - if save the current results to an HTML file
         """
+        if visuals['real_A'].shape[1] > 3:
+            visuals['real_A'] = torch.argmax(visuals['real_A'], dim=1, keepdim=True)
         if self.display_id > 0:  # show images in the browser using visdom
             ncols = self.ncols
             if ncols > 0:        # show all the images in one visdom panel
